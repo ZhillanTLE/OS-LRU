@@ -21,7 +21,7 @@
 #include "vmlib.h"
 
 /* Put your algorithm's name here. It appears in every heading. */
-const char *ALGORITHM_NAME = "FIFO (the given worked example)";
+const char *ALGORITHM_NAME = "LRU (Least Recently Used)";
 
 /* ===================================================================== */
 /*  THE WORKED EXAMPLE: FIFO                                              */
