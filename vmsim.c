@@ -82,8 +82,13 @@ static int fifo_victim(VmSim *sim)
  */
 int choose_victim(VmSim *sim)
 {
-    /* TODO: replace this line with your own algorithm. */
-    return fifo_victim(sim);
+    /* LRU: evict the page whose last use is furthest in the past.
+     * Strict '<' means ties go to the lower frame index. */
+    int victim = 0;
+    for (int i = 1; i < sim->nframes; i++)
+        if (sim->frame[i].last_used < sim->frame[victim].last_used)
+            victim = i;
+    return victim;
 }
 
 /* ===================================================================== */
