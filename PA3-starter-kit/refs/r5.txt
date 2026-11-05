@@ -1,0 +1,2 @@
+# r5.txt -- string 3 from the lecture exercise, slide 53.
+3 2 1w 0 3 4 5w 3 2 1 6 3w 2

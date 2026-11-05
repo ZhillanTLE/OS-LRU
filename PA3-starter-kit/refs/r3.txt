@@ -1,0 +1,5 @@
+# r3.txt -- string 1 from the lecture exercise, slide 53.
+# A 'w' after a page number marks that reference a WRITE, which sets the
+# modify (dirty) bit on that page. A dirty page costs an extra disk write
+# when it is evicted (slide 43).
+7 0w 1 2 0 3w 0 4 2w 3 0 3 2

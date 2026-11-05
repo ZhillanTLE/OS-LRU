@@ -1,0 +1,6 @@
+# r2-belady.txt
+# The second string on lecture slide 46, the one used to show that adding a
+# frame can INCREASE the number of faults under FIFO. All reads.
+#
+# Run "make run" style sweeps on this one and watch the FIFO column.
+1 2 3 4 1 2 5 1 2 3 4 5

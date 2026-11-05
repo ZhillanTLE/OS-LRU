@@ -1,0 +1,9 @@
+# r7-reuse.txt -- long reuse distances.
+#
+# Pages 1 and 4 are referenced early and then left alone for more than eight
+# references, while pages 2 and 3 are hammered. Any algorithm that remembers
+# only a fixed, short window of history cannot tell pages 1 and 4 apart by the
+# time page 5 arrives.
+#
+# RUN THIS ONE WITH 4 FRAMES:   ./vmsim refs/r7-reuse.txt -f 4
+1 2 3 4 1 2 3 2 3 2 3 2 3 5 1

@@ -1,0 +1,2 @@
+# r6.txt -- string 4 from the lecture exercise, slide 53.
+2 5w 3 1 2 4 5 3w 2 1 4 5w 2 3 6

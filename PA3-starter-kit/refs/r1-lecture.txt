@@ -1,0 +1,8 @@
+# r1-lecture.txt
+# The reference string used throughout the Virtual Memory lecture
+# (slides 45 to 48). All reads.
+#
+# With 3 frames the published answers are:
+#     FIFO 15 faults, Optimal 9 faults, LRU 12 faults.
+# Your FIFO run must reproduce 15. That is your self-check.
+7 0 1 2 0 3 0 4 2 3 0 3 0 3 2 1 2 0 1 7 0 1
