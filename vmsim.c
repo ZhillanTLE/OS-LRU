@@ -107,57 +107,50 @@ int choose_victim(VmSim *sim)
  * happens, print it before the sweep, or guard the collecting with
  * sim->recording, which the library sets to 0 for those extra runs.
  */
+/*
+ * Slide 49's LRU stack at every eviction, rebuilt after the run from the
+ * recorded history, so the bookkeeping fields are never touched and the
+ * frame sweep's re-runs cannot add to it. Walking the reference string
+ * backwards from t-1 meets the resident pages in order of most recent use.
+ */
 static void print_lru_stack(const VmSim *sim)
 {
-    printf("  THE LRU STACK AT EVERY EVICTION   (slide 49)\n");
-    printf("===========================================================\n");
-    printf("  Most recently used on the left. The page at the far right\n");
-    printf("  is the victim: nothing has gone unused for longer.\n");
-    printf("-------------------------------------------------------------\n");
-    printf("  t     page in   stack, most recent first\n");
-    printf("-----------------------------------------------------------\n");
+    printf("===========================================================\n"
+           "  THE LRU STACK AT EVERY EVICTION   (slide 49)\n"
+           "===========================================================\n"
+           "  Most recently used on the left. The page at the far right\n"
+           "  is the victim: nothing has gone unused for longer.\n"
+           "-----------------------------------------------------------\n"
+           "  t     page in   stack, most recent first\n"
+           "-----------------------------------------------------------\n");
 
-    int count = 0;
     for (int t = 1; t < sim->nrefs; t++) {
         if (sim->victim_at[t] < 0)
             continue;
-
-        int page[MAX_FRAMES], last[MAX_FRAMES], n = sim->nframes;
-        for (int i = 0; i < n; i++) {
-            page[i] = sim->hist[t - 1][i];
-            last[i] = -1;
-            for (int k = t - 1; k >= 0; k--)
-                if (sim->ref[k] == page[i]) { last[i] = k; break; }
-        }
-
-        /* insertion sort, most recent first */
-        for (int i = 1; i < n; i++) {
-            int p = page[i], l = last[i], j = i - 1;
-            for (; j >= 0 && last[j] < l; j--) {
-                page[j + 1] = page[j];
-                last[j + 1] = last[j];
-            }
-            page[j + 1] = p;
-            last[j + 1] = l;
-        }
+        const int *mem = sim->hist[t - 1];   /* memory just before t */
+        int shown[MAX_FRAMES] = {0}, n = 0;
 
         printf("  %-5d %-9d ", t, sim->ref[t]);
-        for (int i = 0; i < n; i++)
-            printf("%s%d(t=%d)", i ? " > " : "", page[i], last[i]);
-        printf("   evict %d\n", sim->hist[t - 1][sim->victim_at[t]]);
-        count++;
+        for (int k = t - 1; k >= 0 && n < sim->nframes; k--)
+            for (int i = 0; i < sim->nframes; i++)
+                if (mem[i] == sim->ref[k] && !shown[i]) {
+                    printf("%s%d(t=%d)", n++ ? " > " : "", mem[i], k);
+                    shown[i] = 1;
+                }
+        printf("   evict %d\n", mem[sim->victim_at[t]]);
     }
 
-    printf("-----------------------------------------------------------\n");
-    printf("  Evictions : %d\n\n", count);
+    printf("-----------------------------------------------------------\n"
+           "  Evictions : %d\n\n", sim->evictions);
 }
 
-
+/*
+ * Called once, after the run. Our extra output (the LRU stack) comes first,
+ * then the two comparisons every topic must print.
+ */
 void print_topic_extra(VmSim *sim)
 {
-    /* TODO: your topic's own extra output goes here. */
     print_lru_stack(sim);
-
     print_vs_fifo(sim, ALGORITHM_NAME);
     print_frame_sweep(sim, ALGORITHM_NAME);
 }

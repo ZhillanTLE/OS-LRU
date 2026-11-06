@@ -1,3 +1,5 @@
+$ make clean && make
+rm -f vmsim memlab memlab-static paging_report.csv
 gcc -Wall -Wextra -std=c11 -O2 -o vmsim vmsim.c vmlib.c
 gcc -Wall -Wextra -std=c11 -O2 -o memlab memlab.c
 gcc -Wall -Wextra -std=c11 -O2 -static -o memlab-static memlab.c
@@ -8,47 +10,47 @@ $ ./memlab
 ============================================================
     page size                          4096 bytes
     sizeof(int)                        4 bytes
-    VmRSS at start                     1408 KiB
+    VmRSS at start                     1576 KiB
 
   malloc / free
   ------------------------------------------------------------
     requested                          4000000 bytes (3.81 MiB)
-    VmRSS before we asked                 1408 KiB
-    first byte                 0xffff9b59f010   page    0xffff9b59f   offset    16
-    last byte                  0xffff9b96f90f   page    0xffff9b96f   offset  2319
+    VmRSS before we asked                 1740 KiB
+    first byte                 0x703c2f2a2010   page    0x703c2f2a2   offset    16
+    last byte                  0x703c2f67290f   page    0x703c2f672   offset  2319
     rounded up to                      977 pages = 4001792 bytes
     internal fragmentation             1792 bytes wasted in the last page
-    after asking for the memory        VmRSS =    1412 KiB   (+4 KiB)
+    after asking for the memory        VmRSS =    1744 KiB   (+4 KiB)
       ^ barely moved. The address space exists, but almost no
         physical frame has been allocated yet. That is DEMAND
         PAGING: the pages are marked invalid in the page table
         and will be faulted in one at a time when touched.
-    after writing every element        VmRSS =    5316 KiB   (+3908 KiB)
+    after writing every element        VmRSS =    5648 KiB   (+3908 KiB)
       ^ THERE is the physical memory. One page fault per page,
         about 977 of them, each one handled by the sequence on
         lecture slide 40.
     first 10 values                     0 1 2 3 4 5 6 7 8 9 
-    after free()                       VmRSS =    1408 KiB   (-3908 KiB)
+    after free()                       VmRSS =    1740 KiB   (-3908 KiB)
 
   mmap / munmap  (MAP_ANONYMOUS | MAP_PRIVATE)
   ------------------------------------------------------------
     requested                          4000000 bytes (3.81 MiB)
-    VmRSS before we asked                 1408 KiB
-    first byte                 0xffff9b59f000   page    0xffff9b59f   offset     0
-    last byte                  0xffff9b96f8ff   page    0xffff9b96f   offset  2303
+    VmRSS before we asked                 1740 KiB
+    first byte                 0x703c2f2a2000   page    0x703c2f2a2   offset     0
+    last byte                  0x703c2f6728ff   page    0x703c2f672   offset  2303
     rounded up to                      977 pages = 4001792 bytes
     internal fragmentation             1792 bytes wasted in the last page
-    after asking for the memory        VmRSS =    1408 KiB   (+0 KiB)
+    after asking for the memory        VmRSS =    1740 KiB   (+0 KiB)
       ^ barely moved. The address space exists, but almost no
         physical frame has been allocated yet. That is DEMAND
         PAGING: the pages are marked invalid in the page table
         and will be faulted in one at a time when touched.
-    after writing every element        VmRSS =    5316 KiB   (+3908 KiB)
+    after writing every element        VmRSS =    5648 KiB   (+3908 KiB)
       ^ THERE is the physical memory. One page fault per page,
         about 977 of them, each one handled by the sequence on
         lecture slide 40.
     first 10 values                     0 1 2 3 4 5 6 7 8 9 
-    after munmap()                     VmRSS =    1408 KiB   (-3908 KiB)
+    after munmap()                     VmRSS =    1740 KiB   (-3908 KiB)
 
 ============================================================
   Now compare the two binaries:   make sizes
@@ -58,18 +60,133 @@ $ ./memlab
 
 $ make sizes
 === static against dynamic linking (lecture slide 31) ===
--rwxr-xr-x 1 root root  70K Nov  5 15:41 memlab
--rwxr-xr-x 1 root root 762K Nov  5 15:41 memlab-static
+-rwxr-xr-x 1 root root  17K Nov  6 04:33 memlab
+-rwxr-xr-x 1 root root 937K Nov  6 04:33 memlab-static
 
 --- shared libraries the DYNAMIC build needs at run time ---
-	linux-vdso.so.1 (0x0000ffff9ab2c000)
-	libc.so.6 => /lib/aarch64-linux-gnu/libc.so.6 (0x0000ffff9a900000)
-	/lib/ld-linux-aarch64.so.1 (0x0000ffff9aaf0000)
+	linux-vdso.so.1 (0x00007bf6f670f000)
+	libc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007bf6f64ed000)
+	/lib64/ld-linux-x86-64.so.2 (0x00007bf6f6711000)
 
 --- and the STATIC build ---
 		not a dynamic executable
 	(nothing, or 'not a dynamic executable': the C library is
 	 already inside the binary, which is why it is so much bigger)
+
+$ ./vmsim refs/r1-lecture.txt -f 3
+===========================================================
+  LRU (Least Recently Used)
+  reference string : r1-lecture.txt  (22 references)
+  page frames      : 3
+===========================================================
+
+Frame contents after every reference  (. = frame empty, F = page fault)
+
+  t     :   0   1   2   3   4   5   6   7   8   9  10
+  ref   :  7   0   1   2   0   3   0   4   2   3   0 
+         --------------------------------------------
+  f0    :   7   7   7   2   2   2   2   4   4   4   0
+  f1    :   .   0   0   0   0   0   0   0   0   3   3
+  f2    :   .   .   1   1   1   3   3   3   2   2   2
+         --------------------------------------------
+  fault :   F   F   F   F   .   F   .   F   F   F   F
+
+  t     :  11  12  13  14  15  16  17  18  19  20  21
+  ref   :  3   0   3   2   1   2   0   1   7   0   1 
+         --------------------------------------------
+  f0    :   0   0   0   0   1   1   1   1   1   1   1
+  f1    :   3   3   3   3   3   3   0   0   0   0   0
+  f2    :   2   2   2   2   2   2   2   2   7   7   7
+         --------------------------------------------
+  fault :   .   .   .   .   F   .   F   .   F   .   .
+
+Physical memory as it stands at t=21
+
+  frame   page   loaded   last use   uses   ref   dirty   age
+  ---------------------------------------------------------------
+      0      1       15         21      3     1       0   10010010
+      1      0       17         20      2     1       0   01001000
+      2      7       19         19      1     1       0   00100000
+
+-----------------------------------------------------------
+  References        : 22
+  Page faults       : 12
+  Hits              : 10
+  Fault rate        : 0.5455  (54.55%)
+  Hit rate          : 0.4545  (45.45%)
+  Evictions         : 9
+  Dirty write-backs : 0   (evicted pages that had to be saved)
+-----------------------------------------------------------
+
+-----------------------------------------------------------
+  EFFECTIVE ACCESS TIME   (memory 100 ns, fault service 8 ms)
+-----------------------------------------------------------
+  p (fault rate)    = 12 / 22 = 0.5455
+  EAT = (1 - p) x 100 ns + p x 8,000,000 ns
+      = 0.4545 x 100 + 0.5455 x 8000000
+      = 4363681.8 ns
+  Slowdown vs no paging at all : 43636.8 times
+
+  For EAT to stay under 110 ns, which is a 10% slowdown,
+  the fault rate would have to be below 0.00000125, or about 1 in 799990.
+-----------------------------------------------------------
+
+===========================================================
+  THE LRU STACK AT EVERY EVICTION   (slide 49)
+===========================================================
+  Most recently used on the left. The page at the far right
+  is the victim: nothing has gone unused for longer.
+-----------------------------------------------------------
+  t     page in   stack, most recent first
+-----------------------------------------------------------
+  3     2         1(t=2) > 0(t=1) > 7(t=0)   evict 7
+  5     3         0(t=4) > 2(t=3) > 1(t=2)   evict 1
+  7     4         0(t=6) > 3(t=5) > 2(t=3)   evict 2
+  8     2         4(t=7) > 0(t=6) > 3(t=5)   evict 3
+  9     3         2(t=8) > 4(t=7) > 0(t=6)   evict 0
+  10    0         3(t=9) > 2(t=8) > 4(t=7)   evict 4
+  15    1         2(t=14) > 3(t=13) > 0(t=12)   evict 0
+  17    0         2(t=16) > 1(t=15) > 3(t=13)   evict 3
+  19    7         1(t=18) > 0(t=17) > 2(t=16)   evict 2
+-----------------------------------------------------------
+  Evictions : 9
+
+===========================================================
+  LRU (Least Recently Used)  vs  FIFO BASELINE
+  r1-lecture.txt, 3 frames
+===========================================================
+  metric                       FIFO      yours       diff    change
+-----------------------------------------------------------
+  page faults                    15         12         -3    -20.0%
+  fault rate                 0.6818     0.5455    -0.1364         
+-----------------------------------------------------------
+  Your algorithm took 3 FEWER faults than FIFO here.
+===========================================================
+
+===========================================================
+  FRAME SWEEP: does more memory always help?
+  r1-lecture.txt
+===========================================================
+  algorithm : LRU (Least Recently Used)
+-----------------------------------------------------------
+  frames         FIFO          yours   difference
+-----------------------------------------------------------
+  1               22             22            +0
+  2               15             17            +2
+  3               15             12            -3
+  4               10              8            -2
+  5                9              7            -2
+  6                6              6            +0
+  7                6              6            +0
+-----------------------------------------------------------
+  * marks a frame count where ADDING a frame made things worse.
+    That is Belady's anomaly (lecture slide 46).
+
+  FIFO on this string            : no anomaly on this string
+  Your algorithm on this string  : no anomaly on this string
+===========================================================
+
+Wrote paging_report.csv
 
 $ ./vmsim refs/r2-belady.txt -f 3
 ===========================================================
@@ -129,11 +246,12 @@ Physical memory as it stands at t=11
   the fault rate would have to be below 0.00000125, or about 1 in 799990.
 -----------------------------------------------------------
 
+===========================================================
   THE LRU STACK AT EVERY EVICTION   (slide 49)
 ===========================================================
   Most recently used on the left. The page at the far right
   is the victim: nothing has gone unused for longer.
--------------------------------------------------------------
+-----------------------------------------------------------
   t     page in   stack, most recent first
 -----------------------------------------------------------
   3     4         3(t=2) > 2(t=1) > 1(t=0)   evict 1
@@ -242,11 +360,12 @@ Physical memory as it stands at t=12
   the fault rate would have to be below 0.00000125, or about 1 in 799990.
 -----------------------------------------------------------
 
+===========================================================
   THE LRU STACK AT EVERY EVICTION   (slide 49)
 ===========================================================
   Most recently used on the left. The page at the far right
   is the victim: nothing has gone unused for longer.
--------------------------------------------------------------
+-----------------------------------------------------------
   t     page in   stack, most recent first
 -----------------------------------------------------------
   3     2         1(t=2) > 0(t=1) > 7(t=0)   evict 7
@@ -353,11 +472,12 @@ Physical memory as it stands at t=13
   the fault rate would have to be below 0.00000125, or about 1 in 799990.
 -----------------------------------------------------------
 
+===========================================================
   THE LRU STACK AT EVERY EVICTION   (slide 49)
 ===========================================================
   Most recently used on the left. The page at the far right
   is the victim: nothing has gone unused for longer.
--------------------------------------------------------------
+-----------------------------------------------------------
   t     page in   stack, most recent first
 -----------------------------------------------------------
   4     6         2(t=3) > 0(t=2) > 4(t=0)   evict 4
@@ -469,11 +589,12 @@ Physical memory as it stands at t=12
   the fault rate would have to be below 0.00000125, or about 1 in 799990.
 -----------------------------------------------------------
 
+===========================================================
   THE LRU STACK AT EVERY EVICTION   (slide 49)
 ===========================================================
   Most recently used on the left. The page at the far right
   is the victim: nothing has gone unused for longer.
--------------------------------------------------------------
+-----------------------------------------------------------
   t     page in   stack, most recent first
 -----------------------------------------------------------
   3     0         1(t=2) > 2(t=1) > 3(t=0)   evict 3
@@ -584,11 +705,12 @@ Physical memory as it stands at t=14
   the fault rate would have to be below 0.00000125, or about 1 in 799990.
 -----------------------------------------------------------
 
+===========================================================
   THE LRU STACK AT EVERY EVICTION   (slide 49)
 ===========================================================
   Most recently used on the left. The page at the far right
   is the victim: nothing has gone unused for longer.
--------------------------------------------------------------
+-----------------------------------------------------------
   t     page in   stack, most recent first
 -----------------------------------------------------------
   3     1         3(t=2) > 5(t=1) > 2(t=0)   evict 2
@@ -634,6 +756,119 @@ Physical memory as it stands at t=14
   5                6              6            +0
   6                6              6            +0
   7                6              6            +0
+-----------------------------------------------------------
+  * marks a frame count where ADDING a frame made things worse.
+    That is Belady's anomaly (lecture slide 46).
+
+  FIFO on this string            : no anomaly on this string
+  Your algorithm on this string  : no anomaly on this string
+===========================================================
+
+Wrote paging_report.csv
+
+$ ./vmsim refs/r7-reuse.txt -f 3
+===========================================================
+  LRU (Least Recently Used)
+  reference string : r7-reuse.txt  (15 references)
+  page frames      : 3
+===========================================================
+
+Frame contents after every reference  (. = frame empty, F = page fault)
+
+  t     :   0   1   2   3   4   5   6   7   8   9  10
+  ref   :  1   2   3   4   1   2   3   2   3   2   3 
+         --------------------------------------------
+  f0    :   1   1   1   4   4   4   3   3   3   3   3
+  f1    :   .   2   2   2   1   1   1   1   1   1   1
+  f2    :   .   .   3   3   3   2   2   2   2   2   2
+         --------------------------------------------
+  fault :   F   F   F   F   F   F   F   .   .   .   .
+
+  t     :  11  12  13  14
+  ref   :  2   3   5   1 
+         ----------------
+  f0    :   3   3   3   3
+  f1    :   1   1   5   5
+  f2    :   2   2   2   1
+         ----------------
+  fault :   .   .   F   F
+
+Physical memory as it stands at t=14
+
+  frame   page   loaded   last use   uses   ref   dirty   age
+  ---------------------------------------------------------------
+      0      3        6         12      4     1       0   00101010
+      1      5       13         13      1     1       0   01000000
+      2      1       14         14      1     1       0   10000000
+
+-----------------------------------------------------------
+  References        : 15
+  Page faults       : 9
+  Hits              : 6
+  Fault rate        : 0.6000  (60.00%)
+  Hit rate          : 0.4000  (40.00%)
+  Evictions         : 6
+  Dirty write-backs : 0   (evicted pages that had to be saved)
+-----------------------------------------------------------
+
+-----------------------------------------------------------
+  EFFECTIVE ACCESS TIME   (memory 100 ns, fault service 8 ms)
+-----------------------------------------------------------
+  p (fault rate)    = 9 / 15 = 0.6000
+  EAT = (1 - p) x 100 ns + p x 8,000,000 ns
+      = 0.4000 x 100 + 0.6000 x 8000000
+      = 4800040.0 ns
+  Slowdown vs no paging at all : 48000.4 times
+
+  For EAT to stay under 110 ns, which is a 10% slowdown,
+  the fault rate would have to be below 0.00000125, or about 1 in 799990.
+-----------------------------------------------------------
+
+===========================================================
+  THE LRU STACK AT EVERY EVICTION   (slide 49)
+===========================================================
+  Most recently used on the left. The page at the far right
+  is the victim: nothing has gone unused for longer.
+-----------------------------------------------------------
+  t     page in   stack, most recent first
+-----------------------------------------------------------
+  3     4         3(t=2) > 2(t=1) > 1(t=0)   evict 1
+  4     1         4(t=3) > 3(t=2) > 2(t=1)   evict 2
+  5     2         1(t=4) > 4(t=3) > 3(t=2)   evict 3
+  6     3         2(t=5) > 1(t=4) > 4(t=3)   evict 4
+  13    5         3(t=12) > 2(t=11) > 1(t=4)   evict 1
+  14    1         5(t=13) > 3(t=12) > 2(t=11)   evict 2
+-----------------------------------------------------------
+  Evictions : 6
+
+===========================================================
+  LRU (Least Recently Used)  vs  FIFO BASELINE
+  r7-reuse.txt, 3 frames
+===========================================================
+  metric                       FIFO      yours       diff    change
+-----------------------------------------------------------
+  page faults                     9          9         +0      0.0%
+  fault rate                 0.6000     0.6000    +0.0000         
+-----------------------------------------------------------
+  Your algorithm tied with FIFO here. Explain why nothing in
+  this reference string lets the two algorithms differ.
+===========================================================
+
+===========================================================
+  FRAME SWEEP: does more memory always help?
+  r7-reuse.txt
+===========================================================
+  algorithm : LRU (Least Recently Used)
+-----------------------------------------------------------
+  frames         FIFO          yours   difference
+-----------------------------------------------------------
+  1               15             15            +0
+  2                9              9            +0
+  3                9              9            +0
+  4                6              5            -1
+  5                5              5            +0
+  6                5              5            +0
+  7                5              5            +0
 -----------------------------------------------------------
   * marks a frame count where ADDING a frame made things worse.
     That is Belady's anomaly (lecture slide 46).
@@ -705,11 +940,12 @@ Physical memory as it stands at t=14
   the fault rate would have to be below 0.00000125, or about 1 in 799990.
 -----------------------------------------------------------
 
+===========================================================
   THE LRU STACK AT EVERY EVICTION   (slide 49)
 ===========================================================
   Most recently used on the left. The page at the far right
   is the victim: nothing has gone unused for longer.
--------------------------------------------------------------
+-----------------------------------------------------------
   t     page in   stack, most recent first
 -----------------------------------------------------------
   13    5         3(t=12) > 2(t=11) > 1(t=4) > 4(t=3)   evict 4
@@ -836,11 +1072,12 @@ Physical memory as it stands at t=21
   the fault rate would have to be below 0.00000125, or about 1 in 799990.
 -----------------------------------------------------------
 
+===========================================================
   THE LRU STACK AT EVERY EVICTION   (slide 49)
 ===========================================================
   Most recently used on the left. The page at the far right
   is the victim: nothing has gone unused for longer.
--------------------------------------------------------------
+-----------------------------------------------------------
   t     page in   stack, most recent first
 -----------------------------------------------------------
   3     2         1(t=2) > 0(t=1) > 7(t=0)   evict 7
@@ -891,6 +1128,135 @@ Physical memory as it stands at t=21
 ===========================================================
 
 Wrote paging_report.csv
+
+$ valgrind ./vmsim refs/r1-lecture.txt
+==587== Memcheck, a memory error detector
+==587== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.
+==587== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info
+==587== Command: ./vmsim refs/r1-lecture.txt
+==587== 
+===========================================================
+  LRU (Least Recently Used)
+  reference string : r1-lecture.txt  (22 references)
+  page frames      : 3
+===========================================================
+
+Frame contents after every reference  (. = frame empty, F = page fault)
+
+  t     :   0   1   2   3   4   5   6   7   8   9  10
+  ref   :  7   0   1   2   0   3   0   4   2   3   0 
+         --------------------------------------------
+  f0    :   7   7   7   2   2   2   2   4   4   4   0
+  f1    :   .   0   0   0   0   0   0   0   0   3   3
+  f2    :   .   .   1   1   1   3   3   3   2   2   2
+         --------------------------------------------
+  fault :   F   F   F   F   .   F   .   F   F   F   F
+
+  t     :  11  12  13  14  15  16  17  18  19  20  21
+  ref   :  3   0   3   2   1   2   0   1   7   0   1 
+         --------------------------------------------
+  f0    :   0   0   0   0   1   1   1   1   1   1   1
+  f1    :   3   3   3   3   3   3   0   0   0   0   0
+  f2    :   2   2   2   2   2   2   2   2   7   7   7
+         --------------------------------------------
+  fault :   .   .   .   .   F   .   F   .   F   .   .
+
+Physical memory as it stands at t=21
+
+  frame   page   loaded   last use   uses   ref   dirty   age
+  ---------------------------------------------------------------
+      0      1       15         21      3     1       0   10010010
+      1      0       17         20      2     1       0   01001000
+      2      7       19         19      1     1       0   00100000
+
+-----------------------------------------------------------
+  References        : 22
+  Page faults       : 12
+  Hits              : 10
+  Fault rate        : 0.5455  (54.55%)
+  Hit rate          : 0.4545  (45.45%)
+  Evictions         : 9
+  Dirty write-backs : 0   (evicted pages that had to be saved)
+-----------------------------------------------------------
+
+-----------------------------------------------------------
+  EFFECTIVE ACCESS TIME   (memory 100 ns, fault service 8 ms)
+-----------------------------------------------------------
+  p (fault rate)    = 12 / 22 = 0.5455
+  EAT = (1 - p) x 100 ns + p x 8,000,000 ns
+      = 0.4545 x 100 + 0.5455 x 8000000
+      = 4363681.8 ns
+  Slowdown vs no paging at all : 43636.8 times
+
+  For EAT to stay under 110 ns, which is a 10% slowdown,
+  the fault rate would have to be below 0.00000125, or about 1 in 799990.
+-----------------------------------------------------------
+
+===========================================================
+  THE LRU STACK AT EVERY EVICTION   (slide 49)
+===========================================================
+  Most recently used on the left. The page at the far right
+  is the victim: nothing has gone unused for longer.
+-----------------------------------------------------------
+  t     page in   stack, most recent first
+-----------------------------------------------------------
+  3     2         1(t=2) > 0(t=1) > 7(t=0)   evict 7
+  5     3         0(t=4) > 2(t=3) > 1(t=2)   evict 1
+  7     4         0(t=6) > 3(t=5) > 2(t=3)   evict 2
+  8     2         4(t=7) > 0(t=6) > 3(t=5)   evict 3
+  9     3         2(t=8) > 4(t=7) > 0(t=6)   evict 0
+  10    0         3(t=9) > 2(t=8) > 4(t=7)   evict 4
+  15    1         2(t=14) > 3(t=13) > 0(t=12)   evict 0
+  17    0         2(t=16) > 1(t=15) > 3(t=13)   evict 3
+  19    7         1(t=18) > 0(t=17) > 2(t=16)   evict 2
+-----------------------------------------------------------
+  Evictions : 9
+
+===========================================================
+  LRU (Least Recently Used)  vs  FIFO BASELINE
+  r1-lecture.txt, 3 frames
+===========================================================
+  metric                       FIFO      yours       diff    change
+-----------------------------------------------------------
+  page faults                    15         12         -3    -20.0%
+  fault rate                 0.6818     0.5455    -0.1364         
+-----------------------------------------------------------
+  Your algorithm took 3 FEWER faults than FIFO here.
+===========================================================
+
+===========================================================
+  FRAME SWEEP: does more memory always help?
+  r1-lecture.txt
+===========================================================
+  algorithm : LRU (Least Recently Used)
+-----------------------------------------------------------
+  frames         FIFO          yours   difference
+-----------------------------------------------------------
+  1               22             22            +0
+  2               15             17            +2
+  3               15             12            -3
+  4               10              8            -2
+  5                9              7            -2
+  6                6              6            +0
+  7                6              6            +0
+-----------------------------------------------------------
+  * marks a frame count where ADDING a frame made things worse.
+    That is Belady's anomaly (lecture slide 46).
+
+  FIFO on this string            : no anomaly on this string
+  Your algorithm on this string  : no anomaly on this string
+===========================================================
+
+Wrote paging_report.csv
+==587== 
+==587== HEAP SUMMARY:
+==587==     in use at exit: 0 bytes in 0 blocks
+==587==   total heap usage: 20 allocs, 20 frees, 635,912 bytes allocated
+==587== 
+==587== All heap blocks were freed -- no leaks are possible
+==587== 
+==587== For lists of detected and suppressed errors, rerun with: -s
+==587== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
 
 $ ./vmsim refs/r1-lecture.txt -f 3
 ===========================================================
@@ -950,11 +1316,12 @@ Physical memory as it stands at t=21
   the fault rate would have to be below 0.00000125, or about 1 in 799990.
 -----------------------------------------------------------
 
+===========================================================
   THE LRU STACK AT EVERY EVICTION   (slide 49)
 ===========================================================
   Most recently used on the left. The page at the far right
   is the victim: nothing has gone unused for longer.
--------------------------------------------------------------
+-----------------------------------------------------------
   t     page in   stack, most recent first
 -----------------------------------------------------------
   3     2         1(t=2) > 0(t=1) > 7(t=0)   evict 7
@@ -1005,3 +1372,4 @@ Physical memory as it stands at t=21
 ===========================================================
 
 Wrote paging_report.csv
+
