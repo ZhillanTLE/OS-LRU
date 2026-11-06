@@ -1,6 +1,6 @@
 # Programming Assignment 3, Type 2: Least Recently Used (LRU)
 
-**Group:** Zhillan Baniaksa 2506637174, Maglio Razzy E. 2596553616
+**Group:** Zhillan Baniaksa 2506637174, Maglio Razzy E. 2506553616
 **Class:** KKI
 
 All figures below come from our own captured run in `sample_output.txt`.
